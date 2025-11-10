@@ -14,35 +14,42 @@ class Classifier(nn.Module):
         in_channels: int = 3,
         num_classes: int = 6,
     ):
-        """
-        A convolutional network for image classification.
-
-        Args:
-            in_channels: int, number of input channels
-            num_classes: int
-        """
         super().__init__()
 
         self.register_buffer("input_mean", torch.as_tensor(INPUT_MEAN))
         self.register_buffer("input_std", torch.as_tensor(INPUT_STD))
 
-        # TODO: implement
-        pass
+        # Simple but strong CNN architecture
+        self.features = nn.Sequential(
+            nn.Conv2d(in_channels, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(2),   # 64 -> 32
+
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(2),   # 32 -> 16
+
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2),   # 16 -> 8
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * 8 * 8, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(128, num_classes),
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: tensor (b, 3, h, w) image
-
-        Returns:
-            tensor (b, num_classes) logits
-        """
-        # optional: normalizes the input
+        # Normalize input
         z = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
-
-        # TODO: replace with actual forward pass
-        logits = torch.randn(x.size(0), 6)
-
+        z = self.features(z)
+        logits = self.classifier(z)
         return logits
 
     def predict(self, x: torch.Tensor) -> torch.Tensor:
